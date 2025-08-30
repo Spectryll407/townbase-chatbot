@@ -1,36 +1,41 @@
 import express from "express";
 import { fetchEvents } from "../services/townbase.js";
+import { interpretQuery, summarizeEvents } from "../services/llm.js";
 
 const router = express.Router();
 
 router.get("/", async (req, res) => {
-  const { query, size = 5, language = "en" } = req.query;
+  const { query } = req.query;
+  if (!query) return res.status(400).json({ error: "Query is required" });
 
-  if (!query) {
-    return res.status(400).json({ error: "Query is required" });
-  }
+  // Step 1: LLM interprets query
+  const interpreted = await interpretQuery(query);
+  console.log("Interpreted query:", interpreted);
 
-  const events = await fetchEvents(query, size, language);
+  // Step 2: Fetch events
+  const events = await fetchEvents(interpreted.keywords);
 
   if (!events.length) {
     return res.json({
-      reply: "Sorry, I couldn’t find any events for that.",
+      reply: `Sorry, I couldn’t find events for "${interpreted.keywords}".`,
       events: []
     });
   }
 
-  // Clean structured response
+  // Clean events for frontend
   const formatted = events.map(e => ({
     id: e._id,
-    name: e.name || "Untitled event",
+    name: e.name || "Untitled",
     start: e.start || "No date",
-    end: e.end || null,
-    url: e.url || null,
-    location: e.locations?.[0]?.address || null
+    url: e.url || "",
+    location: e.locations?.[0]?.address || ""
   }));
 
+  // Step 3: LLM summarizes results
+  const summary = await summarizeEvents(query, formatted);
+
   return res.json({
-    reply: `Found ${formatted.length} events for "${query}"`,
+    reply: summary,
     events: formatted
   });
 });
