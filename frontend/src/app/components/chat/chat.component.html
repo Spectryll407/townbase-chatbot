@@ -1,0 +1,19 @@
+<div class="chat-container">
+  <div class="messages">
+    <div *ngFor="let msg of messages" class="message" [ngClass]="msg.sender">
+      <div class="bubble">
+        {{ msg.text }}
+      </div>
+    </div>
+    <div *ngIf="loading" class="message bot">
+      <div class="bubble">⏳ Loading...</div>
+    </div>
+  </div>
+
+  <div class="input-box">
+    <input [(ngModel)]="inputMessage" 
+           placeholder="Ask about events..." 
+           (keyup.enter)="sendMessage()" />
+    <button (click)="sendMessage()">Send</button>
+  </div>
+</div>
